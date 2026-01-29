@@ -5,27 +5,21 @@ enum BookingStatus {
 }
 
 model Booking {
-  id        String        @id @default(cuid())
-
-  studentId String
-  tutorId   String
-
-  slotId    String?
-
-  status    BookingStatus @default(CONFIRMED)
-
-  note      String?
-
+  id          String        @id @default(cuid())
+  studentId   String
+  tutorId     String
+  slotId      String?
+  status      BookingStatus @default(CONFIRMED)
+  note        String?
   completedAt DateTime?
   cancelledAt DateTime?
-
-  student User @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
-  tutor   User @relation("TutorBookings", fields: [tutorId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  student     User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor       User          @relation("TutorBookings", fields: [tutorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([studentId])
   @@index([tutorId])
   @@index([status])
+  @@map("booking")
 }
