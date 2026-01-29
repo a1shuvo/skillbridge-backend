@@ -1,0 +1,47 @@
+model TutorProfile {
+  id          String @id @default(cuid())
+  userId      String @unique
+
+  bio         String?
+  headline    String?
+  location    String?
+  languages   String[] @default([])
+
+  hourlyRate  Int     @default(500)
+  experience  Int     @default(0)
+  isVerified  Boolean @default(false)
+
+  avgRating     Float @default(0)
+  totalReviews  Int   @default(0)
+  totalSessions Int   @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categories   TutorCategory[]
+  availability AvailabilitySlot[]
+  reviews      Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hourlyRate])
+  @@index([avgRating])
+}
+
+model AvailabilitySlot {
+  id        String   @id @default(cuid())
+  tutorId   String
+
+  startTime DateTime
+  endTime   DateTime
+
+  isBooked  Boolean  @default(false)
+
+  tutorProfile TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tutorId])
+  @@index([startTime])
+}

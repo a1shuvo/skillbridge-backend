@@ -1,0 +1,37 @@
+enum Role {
+  STUDENT
+  TUTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String?
+  email     String?    @unique
+  image     String?
+  role      Role       @default(STUDENT)
+  status    UserStatus @default(ACTIVE)
+
+  emailVerified DateTime?
+
+  // Auth relations
+  accounts Account[]
+  sessions Session[]
+
+  // SkillBridge relations
+  tutorProfile       TutorProfile?
+  bookingsAsStudent  Booking[] @relation("StudentBookings")
+  bookingsAsTutor    Booking[] @relation("TutorBookings")
+  reviewsGiven       Review[]  @relation("StudentReviews")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([status])
+}
