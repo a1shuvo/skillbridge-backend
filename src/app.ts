@@ -1,19 +1,22 @@
+import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express, { Application } from "express";
+import { auth } from "./lib/auth";
 
 const app: Application = express();
 
 app.use(
   cors({
-    origin: process.env.APP_URL || "http://localhost:3000", // client side url
+    origin: process.env.APP_URL || "http://localhost:3000",
     credentials: true,
   }),
 );
 
+app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Hello, World!");
+  res.json({ success: true, message: "SkillBridge Backend Running 🚀" });
 });
 
 export default app;
