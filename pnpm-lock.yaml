@@ -32,6 +32,9 @@ importers:
       pg:
         specifier: ^8.17.2
         version: 8.17.2
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@faker-js/faker':
         specifier: ^10.2.0

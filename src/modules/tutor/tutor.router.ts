@@ -1,8 +1,14 @@
-import { Router } from "express";
-import { tutorController } from "./tutor.controller";
+import express, { Router } from 'express';
+import validateRequest from '../../middlewares/validateRequest';
+import { tutorFilterSchema } from './tutor.validation';
+import { tutorController } from './tutor.controller';
 
-const router = Router();
+const router = express.Router();
 
-router.get("/", tutorController.getAllTutors);
+router.get(
+  '/', 
+  validateRequest(tutorFilterSchema), // The guard is now active
+  tutorController.getAllTutors
+);
 
 export const tutorRouter: Router = router;

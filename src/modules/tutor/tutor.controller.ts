@@ -1,15 +1,18 @@
-
 import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 import { tutorService } from "./tutor.service";
-
+import { ITutorQuery } from "./tutor.validation";
 
 const getAllTutors = catchAsync(async (req, res) => {
-  const result = await tutorService.getAllTutors(req.query);
+  const query = req.query as unknown as ITutorQuery;
+  const { meta, data } = await tutorService.getAllTutors(query);
 
-  res.status(200).json({
+  sendResponse(res, {
+    statusCode: 200,
     success: true,
     message: "Tutors retrieved successfully",
-    data: result,
+    meta,
+    data,
   });
 });
 

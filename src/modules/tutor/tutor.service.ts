@@ -1,20 +1,23 @@
-import { Prisma } from "../../../generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { ITutorQuery } from "./tutor.validation";
 
+const getAllTutors = async (query: ITutorQuery) => {
+  // 1. Destructure with Zod-guaranteed types
+  // page and limit are already numbers because of z.coerce.number()
+  const { search, category, minPrice, maxPrice, sortBy, page, limit } = query;
 
-const getAllTutors = async (query: Record<string, any>) => {
-  const { search, category, minPrice, maxPrice, sortBy } = query;
+  const skip = (page - 1) * limit;
 
-  // Build the filter object
+  // 2. Build the filter object
   const whereConditions: Prisma.TutorProfileWhereInput = {
-    // Only show verified tutors and active users
     isVerified: true,
     user: {
       status: "ACTIVE",
     },
   };
 
-  // Search by Name or Bio
+  // Search by Name or Bio (Cleaned up assertions)
   if (search) {
     whereConditions.OR = [
       { user: { name: { contains: search, mode: "insensitive" } } },
@@ -23,11 +26,11 @@ const getAllTutors = async (query: Record<string, any>) => {
     ];
   }
 
-  // Filter by Hourly Rate
-  if (minPrice || maxPrice) {
+  // Filter by Hourly Rate (No more Number() casting needed!)
+  if (minPrice !== undefined || maxPrice !== undefined) {
     whereConditions.hourlyRate = {
-      gte: minPrice ? Number(minPrice) : 0,
-      lte: maxPrice ? Number(maxPrice) : 999999,
+      gte: minPrice ?? 0,
+      lte: maxPrice ?? 999999,
     };
   }
 
@@ -42,28 +45,46 @@ const getAllTutors = async (query: Record<string, any>) => {
     };
   }
 
-  const result = await prisma.tutorProfile.findMany({
-    where: whereConditions,
-    include: {
-      user: {
-        select: {
-          name: true,
-          image: true,
-        },
-      },
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-    },
-    orderBy: 
-      sortBy === "price_low" ? { hourlyRate: "asc" } : 
-      sortBy === "price_high" ? { hourlyRate: "desc" } : 
-      { avgRating: "desc" }, // Default sort
-  });
+  // 3. Sorting Logic
+  const orderBy: Prisma.TutorProfileOrderByWithRelationInput = 
+    sortBy === "price_low" ? { hourlyRate: "asc" } : 
+    sortBy === "price_high" ? { hourlyRate: "desc" } : 
+    { avgRating: "desc" };
 
-  return result;
+  // 4. Parallel Query execution
+  const [result, total] = await prisma.$transaction([
+    prisma.tutorProfile.findMany({
+      where: whereConditions,
+      skip,
+      take: limit,
+      include: {
+        user: {
+          select: {
+            name: true,
+            image: true,
+          },
+        },
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+      },
+      orderBy,
+    }),
+    prisma.tutorProfile.count({ where: whereConditions }),
+  ]);
+
+  // 5. Return structured response
+  return {
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
+    },
+    data: result,
+  };
 };
 
 export const tutorService = {

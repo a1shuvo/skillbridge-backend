@@ -7,6 +7,7 @@ import { notFound } from "./middlewares/notFound";
 import { authRouter } from "./modules/auth/auth.router";
 import { tutorRouter } from "./modules/tutor/tutor.router";
 
+
 const app: Application = express();
 
 app.use(
