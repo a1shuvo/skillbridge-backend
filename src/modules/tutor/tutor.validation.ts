@@ -26,6 +26,7 @@ export const updateTutorProfileSchema = z.object({
     languages: z.array(z.string()).optional(),
     hourlyRate: z.number().min(0).optional(),
     experience: z.number().min(0).optional(),
+    categories: z.array(z.string()).optional(),
   }),
 });
 

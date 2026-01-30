@@ -139,28 +139,48 @@ const getTutorById = async (id: string) => {
 
 const updateTutorProfile = async (
   userId: string,
-  data: Partial<TutorProfile>,
+  payload: { categories?: string[] } & Partial<TutorProfile>,
 ) => {
-  // We use upsert so that if the profile record doesn't exist yet, it gets created.
-  const result = await prisma.tutorProfile.upsert({
-    where: {
-      userId,
-    },
-    update: data,
-    create: {
-      ...data,
-      userId, // Link it to the user from the auth session
-      // Provide defaults for required fields if they aren't in 'data'
-      hourlyRate: data.hourlyRate || 500,
-    },
-    include: {
-      user: {
-        select: {
-          name: true,
-          email: true,
+  const { categories, ...profileData } = payload;
+
+  // Use a transaction to ensure database integrity
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Upsert the profile (Update if exists, Create if not)
+    const profile = await tx.tutorProfile.upsert({
+      where: { userId },
+      update: profileData,
+      create: { ...profileData, userId },
+    });
+
+    // 2. Handle Categories if provided in the payload
+    if (categories) {
+      // First, remove existing categories for this tutor
+      await tx.tutorCategory.deleteMany({
+        where: { tutorId: profile.id },
+      });
+
+      // Then, create the new associations
+      if (categories.length > 0) {
+        await tx.tutorCategory.createMany({
+          data: categories.map((categoryId) => ({
+            tutorId: profile.id,
+            categoryId,
+          })),
+        });
+      }
+    }
+
+    // 3. Return the full profile with the newly linked categories
+    return await tx.tutorProfile.findUnique({
+      where: { id: profile.id },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
         },
       },
-    },
+    });
   });
 
   return result;
