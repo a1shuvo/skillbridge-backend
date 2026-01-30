@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, TutorProfile } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ITutorQuery } from "./tutor.validation";
 
@@ -110,7 +110,8 @@ const getTutorById = async (id: string) => {
       },
       reviews: {
         include: {
-          student: { // In your schema, Review.student points to User
+          student: {
+            // In your schema, Review.student points to User
             select: {
               name: true,
               image: true,
@@ -118,7 +119,7 @@ const getTutorById = async (id: string) => {
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       },
       availability: {
@@ -127,7 +128,7 @@ const getTutorById = async (id: string) => {
           startTime: { gte: new Date() }, // Only show future available slots
         },
         orderBy: {
-          startTime: 'asc',
+          startTime: "asc",
         },
       },
     },
@@ -136,8 +137,37 @@ const getTutorById = async (id: string) => {
   return result;
 };
 
-// Add to your tutorService export
+const updateTutorProfile = async (
+  userId: string,
+  data: Partial<TutorProfile>,
+) => {
+  // We use upsert so that if the profile record doesn't exist yet, it gets created.
+  const result = await prisma.tutorProfile.upsert({
+    where: {
+      userId,
+    },
+    update: data,
+    create: {
+      ...data,
+      userId, // Link it to the user from the auth session
+      // Provide defaults for required fields if they aren't in 'data'
+      hourlyRate: data.hourlyRate || 500,
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  return result;
+};
+
 export const tutorService = {
   getAllTutors,
   getTutorById,
+  updateTutorProfile,
 };

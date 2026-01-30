@@ -1,4 +1,3 @@
-import { Request, Response } from "express"; // Added for explicit typing if needed
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { tutorService } from "./tutor.service";
@@ -39,7 +38,24 @@ const getTutorById = catchAsync(async (req, res) => {
   });
 });
 
+const updateTutorProfile = catchAsync(async (req, res) => {
+  const userId = req.user?.id;
+
+  const result = await tutorService.updateTutorProfile(
+    userId as string,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Tutor profile updated successfully",
+    data: result,
+  });
+});
+
 export const tutorController = {
   getAllTutors,
   getTutorById,
+  updateTutorProfile,
 };

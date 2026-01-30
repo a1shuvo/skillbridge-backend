@@ -18,4 +18,15 @@ export const tutorIdParamSchema = z.object({
   }),
 });
 
+export const updateTutorProfileSchema = z.object({
+  body: z.object({
+    bio: z.string().min(20, "Bio is too short").optional(),
+    headline: z.string().max(100).optional(),
+    location: z.string().optional(),
+    languages: z.array(z.string()).optional(),
+    hourlyRate: z.number().min(0).optional(),
+    experience: z.number().min(0).optional(),
+  }),
+});
+
 export type ITutorQuery = z.infer<typeof tutorFilterSchema>["query"];
