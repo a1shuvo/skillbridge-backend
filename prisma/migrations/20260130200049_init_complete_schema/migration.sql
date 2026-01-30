@@ -1,65 +1,56 @@
-/*
-  Warnings:
+-- CreateEnum
+CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED');
 
-  - You are about to drop the `AvailabilitySlot` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Booking` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Category` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Review` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `TutorCategory` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `TutorProfile` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('STUDENT', 'TUTOR', 'ADMIN');
 
-*/
--- DropForeignKey
-ALTER TABLE "AvailabilitySlot" DROP CONSTRAINT "AvailabilitySlot_tutorId_fkey";
+-- CreateEnum
+CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'BANNED');
 
--- DropForeignKey
-ALTER TABLE "Booking" DROP CONSTRAINT "Booking_studentId_fkey";
+-- CreateTable
+CREATE TABLE "session" (
+    "id" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "token" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "userId" TEXT NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "Booking" DROP CONSTRAINT "Booking_tutorId_fkey";
+    CONSTRAINT "session_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "Review" DROP CONSTRAINT "Review_studentId_fkey";
+-- CreateTable
+CREATE TABLE "account" (
+    "id" TEXT NOT NULL,
+    "accountId" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "accessToken" TEXT,
+    "refreshToken" TEXT,
+    "idToken" TEXT,
+    "accessTokenExpiresAt" TIMESTAMP(3),
+    "refreshTokenExpiresAt" TIMESTAMP(3),
+    "scope" TEXT,
+    "password" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "Review" DROP CONSTRAINT "Review_tutorProfileId_fkey";
+    CONSTRAINT "account_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "TutorCategory" DROP CONSTRAINT "TutorCategory_categoryId_fkey";
+-- CreateTable
+CREATE TABLE "verification" (
+    "id" TEXT NOT NULL,
+    "identifier" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "TutorCategory" DROP CONSTRAINT "TutorCategory_tutorId_fkey";
-
--- DropForeignKey
-ALTER TABLE "TutorProfile" DROP CONSTRAINT "TutorProfile_userId_fkey";
-
--- DropForeignKey
-ALTER TABLE "account" DROP CONSTRAINT "account_userId_fkey";
-
--- DropForeignKey
-ALTER TABLE "session" DROP CONSTRAINT "session_userId_fkey";
-
--- DropTable
-DROP TABLE "AvailabilitySlot";
-
--- DropTable
-DROP TABLE "Booking";
-
--- DropTable
-DROP TABLE "Category";
-
--- DropTable
-DROP TABLE "Review";
-
--- DropTable
-DROP TABLE "TutorCategory";
-
--- DropTable
-DROP TABLE "TutorProfile";
-
--- DropTable
-DROP TABLE "User";
+    CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "booking" (
@@ -67,7 +58,7 @@ CREATE TABLE "booking" (
     "studentId" TEXT NOT NULL,
     "tutorId" TEXT NOT NULL,
     "slotId" TEXT,
-    "status" "BookingStatus" NOT NULL DEFAULT 'CONFIRMED',
+    "status" "BookingStatus" NOT NULL DEFAULT 'PENDING',
     "note" TEXT,
     "completedAt" TIMESTAMP(3),
     "cancelledAt" TIMESTAMP(3),
@@ -102,11 +93,11 @@ CREATE TABLE "tutorCategory" (
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
     "name" TEXT,
-    "email" TEXT,
+    "email" TEXT NOT NULL,
     "image" TEXT,
     "role" "Role" NOT NULL DEFAULT 'STUDENT',
     "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE',
-    "emailVerified" TIMESTAMP(3),
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -158,6 +149,21 @@ CREATE TABLE "availabilitySlot" (
 
     CONSTRAINT "availabilitySlot_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE INDEX "session_userId_idx" ON "session"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
+
+-- CreateIndex
+CREATE INDEX "account_userId_idx" ON "account"("userId");
+
+-- CreateIndex
+CREATE INDEX "verification_identifier_idx" ON "verification"("identifier");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "booking_slotId_key" ON "booking"("slotId");
 
 -- CreateIndex
 CREATE INDEX "booking_studentId_idx" ON "booking"("studentId");
@@ -215,6 +221,9 @@ ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "booking" ADD CONSTRAINT "booking_slotId_fkey" FOREIGN KEY ("slotId") REFERENCES "availabilitySlot"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "booking" ADD CONSTRAINT "booking_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

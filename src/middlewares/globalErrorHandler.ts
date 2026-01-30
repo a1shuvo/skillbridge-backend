@@ -1,5 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
-import { Prisma } from "../../generated/prisma/client";
+
 import { ZodError } from "zod"; // Import ZodError
 
 const globalErrorHandler = (
@@ -26,7 +27,8 @@ const globalErrorHandler = (
   // --- 2. Prisma Validation Errors ---
   else if (err instanceof Prisma.PrismaClientValidationError) {
     statusCode = 400;
-    message = "Prisma Validation Error: Incorrect field types or missing fields!";
+    message =
+      "Prisma Validation Error: Incorrect field types or missing fields!";
   }
 
   // --- 3. Known Request Errors (Database Constraints) ---
