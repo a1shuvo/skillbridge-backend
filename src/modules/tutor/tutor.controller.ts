@@ -1,3 +1,4 @@
+import { Request, Response } from "express"; // Added for explicit typing if needed
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { tutorService } from "./tutor.service";
@@ -16,6 +17,29 @@ const getAllTutors = catchAsync(async (req, res) => {
   });
 });
 
+const getTutorById = catchAsync(async (req, res) => {
+  const id = req.params.id as string;
+
+  const result = await tutorService.getTutorById(id);
+
+  if (!result) {
+    return sendResponse(res, {
+      statusCode: 404,
+      success: false,
+      message: "Tutor profile not found",
+      data: null,
+    });
+  }
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Tutor profile retrieved successfully",
+    data: result,
+  });
+});
+
 export const tutorController = {
   getAllTutors,
+  getTutorById,
 };

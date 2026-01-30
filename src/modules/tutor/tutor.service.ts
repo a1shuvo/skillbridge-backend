@@ -46,10 +46,12 @@ const getAllTutors = async (query: ITutorQuery) => {
   }
 
   // 3. Sorting Logic
-  const orderBy: Prisma.TutorProfileOrderByWithRelationInput = 
-    sortBy === "price_low" ? { hourlyRate: "asc" } : 
-    sortBy === "price_high" ? { hourlyRate: "desc" } : 
-    { avgRating: "desc" };
+  const orderBy: Prisma.TutorProfileOrderByWithRelationInput =
+    sortBy === "price_low"
+      ? { hourlyRate: "asc" }
+      : sortBy === "price_high"
+        ? { hourlyRate: "desc" }
+        : { avgRating: "desc" };
 
   // 4. Parallel Query execution
   const [result, total] = await prisma.$transaction([
@@ -87,6 +89,55 @@ const getAllTutors = async (query: ITutorQuery) => {
   };
 };
 
+const getTutorById = async (id: string) => {
+  const result = await prisma.tutorProfile.findUnique({
+    where: {
+      id,
+      isVerified: true, // Ensuring only verified tutors are public
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+          image: true,
+          email: true,
+        },
+      },
+      categories: {
+        include: {
+          category: true,
+        },
+      },
+      reviews: {
+        include: {
+          student: { // In your schema, Review.student points to User
+            select: {
+              name: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+      availability: {
+        where: {
+          isBooked: false,
+          startTime: { gte: new Date() }, // Only show future available slots
+        },
+        orderBy: {
+          startTime: 'asc',
+        },
+      },
+    },
+  });
+
+  return result;
+};
+
+// Add to your tutorService export
 export const tutorService = {
   getAllTutors,
+  getTutorById,
 };
