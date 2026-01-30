@@ -5,7 +5,7 @@ import { auth } from "./lib/auth";
 import globalErrorHandler from "./middlewares/globalErrorHandler";
 import { notFound } from "./middlewares/notFound";
 import { authRouter } from "./modules/auth/auth.router";
-import { categoryRouter } from "./modules/category/category.routes";
+import { categoryRouter } from "./modules/category/category.router";
 import { tutorRouter } from "./modules/tutor/tutor.router";
 
 const app: Application = express();
