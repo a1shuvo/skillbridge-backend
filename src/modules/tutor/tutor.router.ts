@@ -5,6 +5,7 @@ import { tutorController } from "./tutor.controller";
 import {
   tutorFilterSchema,
   tutorIdParamSchema,
+  updateAvailabilitySchema,
   updateTutorProfileSchema,
 } from "./tutor.validation";
 
@@ -29,6 +30,13 @@ router.put(
   auth(UserRole.TUTOR),
   validateRequest(updateTutorProfileSchema),
   tutorController.updateTutorProfile,
+);
+
+router.put(
+  "/availability",
+  auth(UserRole.TUTOR),
+  validateRequest(updateAvailabilitySchema),
+  tutorController.updateAvailability,
 );
 
 export const tutorRouter: Router = router;

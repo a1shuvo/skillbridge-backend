@@ -54,8 +54,23 @@ const updateTutorProfile = catchAsync(async (req, res) => {
   });
 });
 
+const updateAvailability = catchAsync(async (req, res) => {
+  const userId = req.user?.id as string;
+  const { slots } = req.body;
+
+  const result = await tutorService.updateAvailability(userId, slots);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Availability slots updated successfully",
+    data: result,
+  });
+});
+
 export const tutorController = {
   getAllTutors,
   getTutorById,
   updateTutorProfile,
+  updateAvailability,
 };

@@ -186,8 +186,43 @@ const updateTutorProfile = async (
   return result;
 };
 
+const updateAvailability = async (
+  userId: string,
+  slots: { startTime: string; endTime: string }[],
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Find the tutor profile
+    const tutor = await tx.tutorProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!tutor) throw new Error("Tutor profile not found");
+
+    // 2. Optional: Delete existing slots that ARE NOT booked yet
+    // This allows tutors to refresh their schedule without breaking existing bookings
+    await tx.availabilitySlot.deleteMany({
+      where: {
+        tutorId: tutor.id,
+        isBooked: false,
+      },
+    });
+
+    // 3. Create new slots
+    const newSlots = await tx.availabilitySlot.createMany({
+      data: slots.map((slot) => ({
+        tutorId: tutor.id,
+        startTime: new Date(slot.startTime),
+        endTime: new Date(slot.endTime),
+      })),
+    });
+
+    return newSlots;
+  });
+};
+
 export const tutorService = {
   getAllTutors,
   getTutorById,
   updateTutorProfile,
+  updateAvailability,
 };

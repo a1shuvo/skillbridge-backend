@@ -30,4 +30,21 @@ export const updateTutorProfileSchema = z.object({
   }),
 });
 
+export const updateAvailabilitySchema = z.object({
+  body: z.object({
+    slots: z
+      .array(
+        z.object({
+          startTime: z
+            .string()
+            .pipe(z.iso.datetime({ message: "Invalid start time" })),
+          endTime: z
+            .string()
+            .pipe(z.iso.datetime({ message: "Invalid end time" })),
+        }),
+      )
+      .min(1, "Please provide at least one availability slot"),
+  }),
+});
+
 export type ITutorQuery = z.infer<typeof tutorFilterSchema>["query"];
