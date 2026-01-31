@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma";
+import { UserRole } from "../../middlewares/auth";
 
 const createBooking = async (
   studentId: string,
@@ -53,6 +54,48 @@ const createBooking = async (
   return result;
 };
 
+const getUserBookings = async (userId: string, role: UserRole) => {
+  let whereCondition = {};
+
+  // Define filter based on role
+  if (role === UserRole.STUDENT) {
+    whereCondition = { studentId: userId };
+  } else if (role === UserRole.TUTOR) {
+    whereCondition = { tutorId: userId };
+  } else if (role === UserRole.ADMIN) {
+    whereCondition = {}; // Admin sees all
+  }
+
+  const result = await prisma.booking.findMany({
+    where: whereCondition,
+    include: {
+      // Include slot details (time/date)
+      slot: true,
+      // If student is asking, show tutor details. If tutor is asking, show student details.
+      tutor: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      student: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return result;
+};
+
 export const bookingService = {
   createBooking,
+  getUserBookings,
 };

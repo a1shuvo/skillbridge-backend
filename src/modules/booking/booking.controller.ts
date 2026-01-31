@@ -1,3 +1,4 @@
+import { UserRole } from "../../middlewares/auth";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { bookingService } from "./booking.service";
@@ -14,6 +15,23 @@ const createBooking = catchAsync(async (req, res) => {
   });
 });
 
+const getUserBookings = catchAsync(async (req, res) => {
+  if (!req.user) {
+    throw new Error("You are not authenticated!");
+  }
+  const { id, role } = req.user;
+
+  const result = await bookingService.getUserBookings(id, role as UserRole);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Bookings retrieved successfully",
+    data: result,
+  });
+});
+
 export const bookingController = {
   createBooking,
+  getUserBookings,
 };

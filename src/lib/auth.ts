@@ -132,7 +132,7 @@ export const auth = betterAuth({
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>Prisma Blog</h1>
+      <h1>Skill Bridge</h1>
     </div>
 
     <!-- Content -->
@@ -165,13 +165,13 @@ export const auth = betterAuth({
 
       <p>
         Regards, <br />
-        <strong>Prisma Blog Team</strong>
+        <strong>Skill Bridge Team</strong>
       </p>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      © 2025 Prisma Blog. All rights reserved.
+      © 2025 Skill Bridge. All rights reserved.
     </div>
   </div>
 </body>
