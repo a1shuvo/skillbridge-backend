@@ -95,7 +95,53 @@ const getUserBookings = async (userId: string, role: UserRole) => {
   return result;
 };
 
+const getSingleBooking = async (
+  bookingId: string,
+  userId: string,
+  role: UserRole,
+) => {
+  // 1. Fetch the booking with all related details
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      slot: true,
+      tutor: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      student: {
+        select: {
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+    },
+  });
+
+  // 2. Check if booking exists
+  if (!booking) {
+    throw new Error("Booking not found");
+  }
+
+  // 3. Security Check: Is the user authorized to see this?
+  const isAuthorized =
+    role === UserRole.ADMIN ||
+    booking.studentId === userId ||
+    booking.tutorId === userId;
+
+  if (!isAuthorized) {
+    throw new Error("You are not authorized to view this booking details");
+  }
+
+  return booking;
+};
+
 export const bookingService = {
   createBooking,
   getUserBookings,
+  getSingleBooking,
 };

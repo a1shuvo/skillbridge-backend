@@ -5,6 +5,7 @@ import { auth } from "./lib/auth";
 import globalErrorHandler from "./middlewares/globalErrorHandler";
 import { notFound } from "./middlewares/notFound";
 import { authRouter } from "./modules/auth/auth.router";
+import { bookingRouter } from "./modules/booking/booking.router";
 import { categoryRouter } from "./modules/category/category.router";
 import { tutorRouter } from "./modules/tutor/tutor.router";
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/tutors", tutorRouter);
 app.use("/api/v1/categories", categoryRouter);
+app.use("/api/v1/bookings", bookingRouter);
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "SkillBridge Backend Running 🚀" });

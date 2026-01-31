@@ -31,7 +31,29 @@ const getUserBookings = catchAsync(async (req, res) => {
   });
 });
 
+const getSingleBooking = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  if (!id || typeof id !== "string") {
+    throw new Error("Valid Booking ID is required");
+  }
+  const { id: userId, role } = req.user!;
+
+  const result = await bookingService.getSingleBooking(
+    id,
+    userId,
+    role as UserRole,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Booking details retrieved successfully",
+    data: result,
+  });
+});
+
 export const bookingController = {
   createBooking,
   getUserBookings,
+  getSingleBooking,
 };
