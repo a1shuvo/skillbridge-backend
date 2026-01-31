@@ -12,6 +12,7 @@ model Booking {
   slotId      String?           @unique
   slot        AvailabilitySlot? @relation(fields: [slotId], references: [id])
   status      BookingStatus     @default(PENDING)
+  review      Review?
   note        String?
   completedAt DateTime?
   cancelledAt DateTime?
