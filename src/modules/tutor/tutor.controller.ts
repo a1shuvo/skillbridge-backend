@@ -18,18 +18,9 @@ const getAllTutors = catchAsync(async (req, res) => {
 
 const getTutorById = catchAsync(async (req, res) => {
   const id = req.params.id as string;
-
   const result = await tutorService.getTutorById(id);
 
-  if (!result) {
-    return sendResponse(res, {
-      statusCode: 404,
-      success: false,
-      message: "Tutor profile not found",
-      data: null,
-    });
-  }
-
+  // No 'if (!result)' needed here because the service now throws the error
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -39,12 +30,9 @@ const getTutorById = catchAsync(async (req, res) => {
 });
 
 const updateTutorProfile = catchAsync(async (req, res) => {
-  const userId = req.user?.id;
+  const userId = req.user!.id;
 
-  const result = await tutorService.updateTutorProfile(
-    userId as string,
-    req.body,
-  );
+  const result = await tutorService.updateTutorProfile(userId, req.body);
 
   sendResponse(res, {
     statusCode: 200,
@@ -55,7 +43,7 @@ const updateTutorProfile = catchAsync(async (req, res) => {
 });
 
 const updateAvailability = catchAsync(async (req, res) => {
-  const userId = req.user?.id as string;
+  const userId = req.user!.id;
   const { slots } = req.body;
 
   const result = await tutorService.updateAvailability(userId, slots);

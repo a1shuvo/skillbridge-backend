@@ -3,13 +3,10 @@ import { prisma } from "../../lib/prisma";
 import { ITutorQuery } from "./tutor.validation";
 
 const getAllTutors = async (query: ITutorQuery) => {
-  // 1. Destructure with Zod-guaranteed types
-  // page and limit are already numbers because of z.coerce.number()
   const { search, category, minPrice, maxPrice, sortBy, page, limit } = query;
-
   const skip = (page - 1) * limit;
 
-  // 2. Build the filter object
+  // 1. Build the filter object
   const whereConditions: Prisma.TutorProfileWhereInput = {
     isVerified: true,
     user: {
@@ -17,7 +14,7 @@ const getAllTutors = async (query: ITutorQuery) => {
     },
   };
 
-  // Search by Name or Bio (Cleaned up assertions)
+  // Search Logic (Name, Bio, or Headline)
   if (search) {
     whereConditions.OR = [
       { user: { name: { contains: search, mode: "insensitive" } } },
@@ -26,7 +23,7 @@ const getAllTutors = async (query: ITutorQuery) => {
     ];
   }
 
-  // Filter by Hourly Rate (No more Number() casting needed!)
+  // Price Range Filter
   if (minPrice !== undefined || maxPrice !== undefined) {
     whereConditions.hourlyRate = {
       gte: minPrice ?? 0,
@@ -34,7 +31,7 @@ const getAllTutors = async (query: ITutorQuery) => {
     };
   }
 
-  // Filter by Category Name
+  // Category Filter
   if (category) {
     whereConditions.categories = {
       some: {
@@ -45,15 +42,24 @@ const getAllTutors = async (query: ITutorQuery) => {
     };
   }
 
-  // 3. Sorting Logic
-  const orderBy: Prisma.TutorProfileOrderByWithRelationInput =
-    sortBy === "price_low"
-      ? { hourlyRate: "asc" }
-      : sortBy === "price_high"
-        ? { hourlyRate: "desc" }
-        : { avgRating: "desc" };
+  // 2. Refined Sorting Logic
+  // We use an array for orderBy to provide a "tie-breaker" (createdAt)
+  let orderBy:
+    | Prisma.TutorProfileOrderByWithRelationInput
+    | Prisma.TutorProfileOrderByWithRelationInput[] = [
+    { avgRating: "desc" },
+    { createdAt: "desc" },
+  ];
 
-  // 4. Parallel Query execution
+  if (sortBy === "price_low") {
+    orderBy = [{ hourlyRate: "asc" }, { avgRating: "desc" }];
+  } else if (sortBy === "price_high") {
+    orderBy = [{ hourlyRate: "desc" }, { avgRating: "desc" }];
+  } else if (sortBy === "rating") {
+    orderBy = [{ avgRating: "desc" }, { createdAt: "desc" }];
+  }
+
+  // 3. Parallel Query execution
   const [result, total] = await prisma.$transaction([
     prisma.tutorProfile.findMany({
       where: whereConditions,
@@ -77,7 +83,6 @@ const getAllTutors = async (query: ITutorQuery) => {
     prisma.tutorProfile.count({ where: whereConditions }),
   ]);
 
-  // 5. Return structured response
   return {
     meta: {
       page,
@@ -93,7 +98,7 @@ const getTutorById = async (id: string) => {
   const result = await prisma.tutorProfile.findUnique({
     where: {
       id,
-      isVerified: true, // Ensuring only verified tutors are public
+      isVerified: true,
     },
     include: {
       user: {
@@ -111,7 +116,6 @@ const getTutorById = async (id: string) => {
       reviews: {
         include: {
           student: {
-            // In your schema, Review.student points to User
             select: {
               name: true,
               image: true,
@@ -121,11 +125,12 @@ const getTutorById = async (id: string) => {
         orderBy: {
           createdAt: "desc",
         },
+        take: 10, // Optimization: only load the latest 10 reviews initially
       },
       availability: {
         where: {
           isBooked: false,
-          startTime: { gte: new Date() }, // Only show future available slots
+          startTime: { gte: new Date() },
         },
         orderBy: {
           startTime: "asc",
@@ -134,6 +139,10 @@ const getTutorById = async (id: string) => {
     },
   });
 
+  if (!result) {
+    throw new Error("Tutor profile not found or is currently unavailable.");
+  }
+
   return result;
 };
 
@@ -141,25 +150,32 @@ const updateTutorProfile = async (
   userId: string,
   payload: { categories?: string[] } & Partial<TutorProfile>,
 ) => {
-  const { categories, ...profileData } = payload;
+  // 1. Destructure and strip out protected fields
+  const {
+    categories,
+    id,
+    userId: _,
+    avgRating,
+    isVerified,
+    ...profileData
+  } = payload;
 
-  // Use a transaction to ensure database integrity
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Upsert the profile (Update if exists, Create if not)
+    // 2. Upsert the profile
     const profile = await tx.tutorProfile.upsert({
       where: { userId },
       update: profileData,
       create: { ...profileData, userId },
     });
 
-    // 2. Handle Categories if provided in the payload
-    if (categories) {
-      // First, remove existing categories for this tutor
+    // 3. Sync Categories (Delete and Re-create)
+    if (categories !== undefined) {
+      // Clear existing links
       await tx.tutorCategory.deleteMany({
         where: { tutorId: profile.id },
       });
 
-      // Then, create the new associations
+      // Add new links if categories array isn't empty
       if (categories.length > 0) {
         await tx.tutorCategory.createMany({
           data: categories.map((categoryId) => ({
@@ -170,10 +186,11 @@ const updateTutorProfile = async (
       }
     }
 
-    // 3. Return the full profile with the newly linked categories
+    // 4. Return the refreshed profile
     return await tx.tutorProfile.findUnique({
       where: { id: profile.id },
       include: {
+        user: { select: { name: true, image: true } },
         categories: {
           include: {
             category: true,
@@ -196,10 +213,48 @@ const updateAvailability = async (
       where: { userId },
     });
 
-    if (!tutor) throw new Error("Tutor profile not found");
+    if (!tutor)
+      throw new Error(
+        "Tutor profile not found. Please complete your profile first.",
+      );
 
-    // 2. Delete existing slots that ARE NOT booked yet
-    // This allows tutors to refresh their schedule without breaking existing bookings
+    // 2. Filter and Validate Slots
+    const now = new Date();
+    const validSlots = slots
+      .map((slot) => ({
+        tutorId: tutor.id,
+        startTime: new Date(slot.startTime),
+        endTime: new Date(slot.endTime),
+      }))
+      // A. Only allow slots starting in the future
+      // B. Ensure the session lasts at least some time (startTime < endTime)
+      .filter((slot) => slot.startTime > now && slot.startTime < slot.endTime);
+
+    if (validSlots.length === 0 && slots.length > 0) {
+      throw new Error("All provided slots are invalid or in the past.");
+    }
+
+    // 3. Handle Booked Slots Conflict
+    // Fetch currently booked slots to ensure we don't create overlaps
+    const bookedSlots = await tx.availabilitySlot.findMany({
+      where: { tutorId: tutor.id, isBooked: true },
+    });
+
+    // Check if any new slot overlaps with an existing booking
+    for (const newSlot of validSlots) {
+      const overlap = bookedSlots.find(
+        (booked) =>
+          newSlot.startTime < booked.endTime &&
+          newSlot.endTime > booked.startTime,
+      );
+      if (overlap) {
+        throw new Error(
+          `New slot ${newSlot.startTime.toLocaleString()} overlaps with an existing booking.`,
+        );
+      }
+    }
+
+    // 4. Delete existing unbooked slots
     await tx.availabilitySlot.deleteMany({
       where: {
         tutorId: tutor.id,
@@ -207,16 +262,12 @@ const updateAvailability = async (
       },
     });
 
-    // 3. Create new slots
-    const newSlots = await tx.availabilitySlot.createMany({
-      data: slots.map((slot) => ({
-        tutorId: tutor.id,
-        startTime: new Date(slot.startTime),
-        endTime: new Date(slot.endTime),
-      })),
+    // 5. Bulk Insert valid new slots
+    const createdSlots = await tx.availabilitySlot.createMany({
+      data: validSlots,
     });
 
-    return newSlots;
+    return createdSlots;
   });
 };
 
