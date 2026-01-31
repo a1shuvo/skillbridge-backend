@@ -25,4 +25,16 @@ router.post(
   bookingController.createBooking,
 );
 
+router.patch(
+  "/:id/complete",
+  auth(UserRole.TUTOR),
+  bookingController.completeBooking,
+);
+
+router.patch(
+  "/:id/cancel",
+  auth(UserRole.STUDENT),
+  bookingController.cancelBooking,
+);
+
 export const bookingRouter: Router = router;

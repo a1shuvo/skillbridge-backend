@@ -198,7 +198,7 @@ const updateAvailability = async (
 
     if (!tutor) throw new Error("Tutor profile not found");
 
-    // 2. Optional: Delete existing slots that ARE NOT booked yet
+    // 2. Delete existing slots that ARE NOT booked yet
     // This allows tutors to refresh their schedule without breaking existing bookings
     await tx.availabilitySlot.deleteMany({
       where: {

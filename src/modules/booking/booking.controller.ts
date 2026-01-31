@@ -52,8 +52,44 @@ const getSingleBooking = catchAsync(async (req, res) => {
   });
 });
 
+const completeBooking = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  if (!id || typeof id !== "string") {
+    throw new Error("Valid Booking ID is required");
+  }
+  const tutorId = req.user!.id;
+
+  const result = await bookingService.completeBooking(id, tutorId);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Session marked as completed successfully!",
+    data: result,
+  });
+});
+
+const cancelBooking = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  if (!id || typeof id !== "string") {
+    throw new Error("Valid Booking ID is required");
+  }
+  const studentId = req.user!.id;
+
+  const result = await bookingService.cancelBooking(id, studentId);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Booking cancelled successfully. The slot is now open for others.",
+    data: result,
+  });
+});
+
 export const bookingController = {
   createBooking,
   getUserBookings,
   getSingleBooking,
+  completeBooking,
+  cancelBooking,
 };
