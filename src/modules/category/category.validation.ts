@@ -12,12 +12,16 @@ const createCategorySchema = z.object({
 });
 
 const updateCategorySchema = z.object({
+  params: z.object({
+    id: z.string({
+      message: "Category ID is required",
+    }),
+  }),
   body: z.object({
     name: z
       .string()
       .min(2, "Category name must be at least 2 characters long")
-      .max(50, "Category name cannot exceed 50 characters")
-      .optional(),
+      .max(50, "Category name cannot exceed 50 characters"),
   }),
 });
 
