@@ -155,7 +155,7 @@ export const auth = betterAuth({
       </p>
 
       <p class="link">
-        ${url}
+        ${verificationUrl}
       </p>
 
       <p>
