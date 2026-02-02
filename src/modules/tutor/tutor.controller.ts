@@ -20,11 +20,22 @@ const getTutorById = catchAsync(async (req, res) => {
   const id = req.params.id as string;
   const result = await tutorService.getTutorById(id);
 
-  // No 'if (!result)' needed here because the service now throws the error
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: "Tutor profile retrieved successfully",
+    data: result,
+  });
+});
+
+const getMyTutorProfile = catchAsync(async (req, res) => {
+  const userId = req.user!.id;
+  const result = await tutorService.getMyTutorProfile(userId);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "My tutor profile retrieved successfully",
     data: result,
   });
 });
@@ -59,6 +70,7 @@ const updateAvailability = catchAsync(async (req, res) => {
 export const tutorController = {
   getAllTutors,
   getTutorById,
+  getMyTutorProfile,
   updateTutorProfile,
   updateAvailability,
 };

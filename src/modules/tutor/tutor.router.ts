@@ -25,6 +25,12 @@ router.get(
 );
 
 // --- Tutor Private Routes ---
+router.get(
+  "/profile/me",
+  auth(UserRole.TUTOR),
+  tutorController.getMyTutorProfile,
+);
+
 router.put(
   "/profile",
   auth(UserRole.TUTOR),

@@ -43,7 +43,6 @@ const getAllTutors = async (query: ITutorQuery) => {
   }
 
   // 2. Refined Sorting Logic
-  // We use an array for orderBy to provide a "tie-breaker" (createdAt)
   let orderBy:
     | Prisma.TutorProfileOrderByWithRelationInput
     | Prisma.TutorProfileOrderByWithRelationInput[] = [
@@ -125,7 +124,7 @@ const getTutorById = async (id: string) => {
         orderBy: {
           createdAt: "desc",
         },
-        take: 10, // Optimization: only load the latest 10 reviews initially
+        take: 10,
       },
       availability: {
         where: {
@@ -146,11 +145,61 @@ const getTutorById = async (id: string) => {
   return result;
 };
 
+// NEW: Get my tutor profile with all slots (booked and available)
+const getMyTutorProfile = async (userId: string) => {
+  const result = await prisma.tutorProfile.findUnique({
+    where: {
+      userId,
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+          image: true,
+          email: true,
+        },
+      },
+      categories: {
+        include: {
+          category: true,
+        },
+      },
+      reviews: {
+        include: {
+          student: {
+            select: {
+              name: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
+      // Include ALL availability slots (both booked and unbooked) for the tutor dashboard
+      availability: {
+        where: {
+          startTime: { gte: new Date() },
+        },
+        orderBy: {
+          startTime: "asc",
+        },
+      },
+    },
+  });
+
+  if (!result) {
+    throw new Error("Tutor profile not found. Please complete your profile setup.");
+  }
+
+  return result;
+};
+
 const updateTutorProfile = async (
   userId: string,
   payload: { categories?: string[] } & Partial<TutorProfile>,
 ) => {
-  // 1. Destructure and strip out protected fields
   const {
     categories,
     id,
@@ -161,21 +210,17 @@ const updateTutorProfile = async (
   } = payload;
 
   const result = await prisma.$transaction(async (tx) => {
-    // 2. Upsert the profile
     const profile = await tx.tutorProfile.upsert({
       where: { userId },
       update: profileData,
       create: { ...profileData, userId },
     });
 
-    // 3. Sync Categories (Delete and Re-create)
     if (categories !== undefined) {
-      // Clear existing links
       await tx.tutorCategory.deleteMany({
         where: { tutorId: profile.id },
       });
 
-      // Add new links if categories array isn't empty
       if (categories.length > 0) {
         await tx.tutorCategory.createMany({
           data: categories.map((categoryId) => ({
@@ -186,7 +231,6 @@ const updateTutorProfile = async (
       }
     }
 
-    // 4. Return the refreshed profile
     return await tx.tutorProfile.findUnique({
       where: { id: profile.id },
       include: {
@@ -208,7 +252,6 @@ const updateAvailability = async (
   slots: { startTime: string; endTime: string }[],
 ) => {
   return await prisma.$transaction(async (tx) => {
-    // 1. Find the tutor profile
     const tutor = await tx.tutorProfile.findUnique({
       where: { userId },
     });
@@ -218,7 +261,6 @@ const updateAvailability = async (
         "Tutor profile not found. Please complete your profile first.",
       );
 
-    // 2. Filter and Validate Slots
     const now = new Date();
     const validSlots = slots
       .map((slot) => ({
@@ -226,21 +268,16 @@ const updateAvailability = async (
         startTime: new Date(slot.startTime),
         endTime: new Date(slot.endTime),
       }))
-      // A. Only allow slots starting in the future
-      // B. Ensure the session lasts at least some time (startTime < endTime)
       .filter((slot) => slot.startTime > now && slot.startTime < slot.endTime);
 
     if (validSlots.length === 0 && slots.length > 0) {
       throw new Error("All provided slots are invalid or in the past.");
     }
 
-    // 3. Handle Booked Slots Conflict
-    // Fetch currently booked slots to ensure we don't create overlaps
     const bookedSlots = await tx.availabilitySlot.findMany({
       where: { tutorId: tutor.id, isBooked: true },
     });
 
-    // Check if any new slot overlaps with an existing booking
     for (const newSlot of validSlots) {
       const overlap = bookedSlots.find(
         (booked) =>
@@ -254,7 +291,6 @@ const updateAvailability = async (
       }
     }
 
-    // 4. Delete existing unbooked slots
     await tx.availabilitySlot.deleteMany({
       where: {
         tutorId: tutor.id,
@@ -262,7 +298,6 @@ const updateAvailability = async (
       },
     });
 
-    // 5. Bulk Insert valid new slots
     const createdSlots = await tx.availabilitySlot.createMany({
       data: validSlots,
     });
@@ -274,6 +309,7 @@ const updateAvailability = async (
 export const tutorService = {
   getAllTutors,
   getTutorById,
+  getMyTutorProfile,
   updateTutorProfile,
   updateAvailability,
 };
